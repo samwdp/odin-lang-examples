@@ -67,6 +67,8 @@ main :: proc() {
                 camera.up = Vector3{0.0, 1.0, 0.0}
                 camera.projection = CameraProjection.ORTHOGRAPHIC
                 camera.fovy = 20.0 // near plane width in CAMERA_ORTHOGRAPHIC
+                CameraYaw(&camera, -135 * DEG2RAD, true)
+                CameraPitch(&camera, -45 * DEG2RAD, true, true, false)
             } else if (camera.projection == CameraProjection.ORTHOGRAPHIC) {
                 // Reset to default view
                 cameraMode = CameraMode.THIRD_PERSON
@@ -191,4 +193,91 @@ main :: proc() {
 
         EndDrawing()
     }
+}
+
+CameraPitch :: proc(
+    camera: ^rl.Camera,
+    angle: f32,
+    lockView: bool,
+    rotateAroundTarget: bool,
+    rotateUp: bool,
+) {
+    using rl
+
+    _angle := angle
+    // Up direction
+    up := GetCameraUp(camera)
+
+    // View vector
+    targetPosition := camera.target - camera.position
+    // targetPosition := Vector3Subtract(camera.target, camera.position)
+
+    if (lockView) {
+        // In these camera modes we clamp the Pitch angle
+        // to allow only viewing straight up or down.
+
+        // Clamp view up
+        maxAngleUp := Vector3Angle(up, targetPosition)
+        maxAngleUp -= 0.001 // avoid numerical errors
+        if (angle > maxAngleUp) do _angle = maxAngleUp
+
+        // Clamp view down
+        maxAngleDown := Vector3Angle(-up, targetPosition)
+        maxAngleDown *= -1.0 // downwards angle is negative
+        maxAngleDown += 0.001 // avoid numerical errors
+        if (angle < maxAngleDown) do _angle = maxAngleDown
+    }
+
+    // Rotation axis
+    right := GetCameraRight(camera)
+
+    // Rotate view vector around right axis
+    targetPosition = Vector3RotateByAxisAngle(targetPosition, right, _angle)
+
+    if (rotateAroundTarget) {
+        // Move position relative to target
+        camera.position = camera.target - targetPosition
+    } else // rotate around camera.position
+    {
+        // Move target relative to position
+        camera.target = camera.position + targetPosition
+    }
+
+    if (rotateUp) {
+        // Rotate up direction around right axis
+        camera.up = Vector3RotateByAxisAngle(camera.up, right, _angle)
+    }
+}
+
+/* This is translated from the rl camera module. 
+ * This is missing from the vendor library so need to do this manually 
+ */
+CameraYaw :: proc(camera: ^rl.Camera, angle: f32, rotateAroundTarget: bool) {
+    using rl
+    up := GetCameraUp(camera)
+    targetPosition := camera.target - camera.position
+    targetPosition = Vector3RotateByAxisAngle(targetPosition, up, angle)
+    if (rotateAroundTarget) {
+        // Move position relative to target
+        camera.position = camera.target - targetPosition
+    } else // rotate around camera.position
+    {
+        // Move target relative to position
+        camera.target = camera.position + targetPosition
+    }
+}
+
+GetCameraUp :: proc(camera: ^rl.Camera) -> rl.Vector3 {
+    return rl.Vector3Normalize(camera.up)
+}
+
+GetCameraRight :: proc(camera: ^rl.Camera) -> rl.Vector3 {
+    forward := GetCameraForward(camera)
+    up := GetCameraUp(camera)
+
+    return rl.Vector3Normalize(rl.Vector3CrossProduct(forward, up))
+}
+
+GetCameraForward :: proc(camera: ^rl.Camera) -> rl.Vector3 {
+    return rl.Vector3Normalize(camera.target - camera.position)
 }
