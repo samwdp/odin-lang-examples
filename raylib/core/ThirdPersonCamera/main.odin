@@ -85,6 +85,17 @@ main :: proc() {
         DrawCube(Vector3{-16.0, 2.5, 0.0}, 1.0, 5.0, 32.0, BLUE) // Draw a blue wal
         DrawCube(Vector3{16.0, 2.5, 0.0}, 1.0, 5.0, 32.0, LIME) // Draw a green wall
         DrawCube(Vector3{0.0, 2.5, 16.0}, 32.0, 5.0, 1.0, GOLD)
+        for i in 0 ..< MAX_COLUMNS {
+            DrawCube(positions[i], 2.0, heights[i], 2.0, colors[i])
+            DrawCubeWires(positions[i], 2.0, heights[i], 2.0, MAROON)
+        }
+
+        // Draw player cube
+        if (cameraMode == CameraMode.THIRD_PERSON) {
+            DrawCube(camera.target, 0.5, 0.5, 0.5, PURPLE)
+            DrawCubeWires(camera.target, 0.5, 0.5, 0.5, DARKPURPLE)
+        }
+
         EndMode3D()
         DrawRectangle(5, 5, 330, 100, Fade(SKYBLUE, 0.5))
         DrawRectangleLines(5, 5, 330, 100, BLUE)
